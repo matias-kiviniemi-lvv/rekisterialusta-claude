@@ -8,7 +8,7 @@ import type { RegistryConfig } from "../registry-config.ts";
 export const PERMIT_CONFIG: RegistryConfig = {
   registryId: "permit",
   name: "Permit Registry",
-  database: "pool-a/permit",
+  database: "permit",
   diary: { registryCode: "PERMIT", numberPadding: 5, separator: "/" },
   version: 1,
   fields: [

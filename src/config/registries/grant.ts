@@ -13,7 +13,7 @@ import type { RegistryConfig } from "../registry-config.ts";
 export const GRANT_CONFIG: RegistryConfig = {
   registryId: "grant",
   name: "Grant Registry",
-  database: "pool-b/grant",
+  database: "grant",
   diary: { registryCode: "GRANT", numberPadding: 6, separator: "-" }, // different format
   version: 1,
   fields: [
