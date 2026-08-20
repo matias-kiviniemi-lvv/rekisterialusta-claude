@@ -122,4 +122,8 @@ test("translateDdl maps inline and ALTER TABLE TEXT columns", () => {
     translateDdl("ALTER TABLE cases ADD external_id TEXT NULL"),
     "ALTER TABLE cases ADD external_id NVARCHAR(400) NULL",
   );
+  assert.equal(
+    translateDdl("CREATE TABLE rules ([trigger] TEXT NOT NULL DEFAULT 'state_change')"),
+    "CREATE TABLE rules ([trigger] NVARCHAR(400) NOT NULL DEFAULT 'state_change')",
+  );
 });

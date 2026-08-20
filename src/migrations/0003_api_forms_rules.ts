@@ -56,7 +56,7 @@ export const m0003: Migration = {
       CREATE TABLE rules (
         rule_id      TEXT PRIMARY KEY,
         registry_id  TEXT NOT NULL,
-        trigger      TEXT NOT NULL DEFAULT 'state_change',
+        [trigger]    TEXT NOT NULL DEFAULT 'state_change',
         on_to_state  TEXT NULL,
         condition    TEXT NULL,
         action_type  TEXT NOT NULL,

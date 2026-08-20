@@ -114,7 +114,7 @@ export async function applyRegistryConfig(
     await tx.run("DELETE FROM rules WHERE registry_id = ?", [config.registryId]);
     for (const r of config.rules ?? []) {
       await tx.run(
-        `INSERT INTO rules (rule_id, registry_id, trigger, on_to_state, condition, action_type, action_params, ordering)
+        `INSERT INTO rules (rule_id, registry_id, [trigger], on_to_state, condition, action_type, action_params, ordering)
          VALUES (?, ?, 'state_change', ?, ?, ?, ?, ?)`,
         [
           r.ruleId, config.registryId, r.onToState ?? null,

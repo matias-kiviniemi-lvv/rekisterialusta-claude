@@ -56,7 +56,7 @@ async function loadRules(shared: Db, registryId: string, toState: string): Promi
   const rows = await shared.all(
     `SELECT rule_id, on_to_state, condition, action_type, action_params
        FROM rules
-      WHERE registry_id = ? AND active = 1 AND trigger = 'state_change'
+      WHERE registry_id = ? AND active = 1 AND [trigger] = 'state_change'
         AND (on_to_state IS NULL OR on_to_state = ?)
       ORDER BY ordering, rule_id`,
     [registryId, toState],

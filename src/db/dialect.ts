@@ -265,9 +265,9 @@ export function translateDdl(sql: string): string {
   // Per-column TEXT → NVARCHAR(width) using the large-column heuristic.
   // Column definitions may be multiline, inline after `(` or `,`, or supplied
   // to ALTER TABLE ... ADD. Preserve that prefix while replacing the type.
-  out = out.replace(/(^\s*|[,(]\s*|\bADD\s+)([A-Za-z_][A-Za-z0-9_]*)\s+TEXT\b/gim, (_m, prefix: string, col: string) => {
+  out = out.replace(/(^\s*|[,(]\s*|\bADD\s+)(\[?)([A-Za-z_][A-Za-z0-9_]*)(\]?)\s+TEXT\b/gim, (_m, prefix: string, open: string, col: string, close: string) => {
     const width = LARGE_TEXT_COLUMNS.has(col.toLowerCase()) ? "MAX" : "400";
-    return `${prefix}${col} NVARCHAR(${width})`;
+    return `${prefix}${open}${col}${close} NVARCHAR(${width})`;
   });
   return out;
 }
