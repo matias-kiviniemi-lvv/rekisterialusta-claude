@@ -14,7 +14,7 @@
 
 import type { DbAdapter } from "./db/db.ts";
 import { SqliteAdapter } from "./db/sqlite-adapter.ts";
-import { createAdapter } from "./db/factory.ts";
+import { createAdapter, type DbTarget } from "./db/factory.ts";
 import { loadDbConfig } from "./config/db-config.ts";
 import { migrate } from "./migrations/runner.ts";
 import { m0001 } from "./migrations/0001_shared_schema.ts";
@@ -36,6 +36,35 @@ export interface SamplePlatform {
   /** The Permit registry DB (kept for tests that predate the Grant registry). */
   db: DbAdapter;
   dbs: Record<string, DbAdapter>;
+}
+
+export interface BootstrapLogger {
+  info(message: string): void;
+  error(message: string): void;
+}
+
+const defaultBootstrapLogger: BootstrapLogger = {
+  info: (message) => process.stdout.write(`${message}\n`),
+  error: (message) => process.stderr.write(`${message}\n`),
+};
+
+function describeTarget(target: DbTarget): string {
+  if (target.dialect === "sqlite") return target.file ?? ":memory:";
+  const auth = target.auth?.kind ?? "sql";
+  return `${target.server}:${target.port ?? 1433}/${target.database} (auth=${auth})`;
+}
+
+async function bootstrapStep<T>(logger: BootstrapLogger, label: string, fn: () => Promise<T>): Promise<T> {
+  logger.info(`[bootstrap] ${label}...`);
+  try {
+    const result = await fn();
+    logger.info(`[bootstrap] ${label}: done`);
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[bootstrap] ${label}: FAILED — ${message}`);
+    throw error;
+  }
 }
 
 /**
@@ -68,21 +97,55 @@ export async function buildSamplePlatform(clock: Clock): Promise<SamplePlatform>
  * Note: with SQL Server, each registry database must already exist on the
  * server (CREATE DATABASE is an operational step, not part of migrations).
  */
-export async function bootstrapFromEnv(clock: Clock): Promise<SamplePlatform> {
+export async function bootstrapFromEnv(
+  clock: Clock,
+  logger: BootstrapLogger = defaultBootstrapLogger,
+): Promise<SamplePlatform> {
   const config = loadDbConfig();
-  const shared = await createAdapter(config.sharedTarget());
-  await migrate(shared, [m0001, m0003, m0005], clock.now());
-  await applyPlatformConfig(shared, PLATFORM_CONFIG, clock.now());
-  await seedMasterDataIfEmpty(shared);
+  logger.info(`[bootstrap] Starting platform with ${config.dialect}`);
+
+  const sharedTarget = config.sharedTarget();
+  const shared = await bootstrapStep(
+    logger,
+    `Connecting shared database ${describeTarget(sharedTarget)}`,
+    () => createAdapter(sharedTarget),
+  );
+  const applied = await bootstrapStep(
+    logger,
+    "Running shared database migrations",
+    () => migrate(shared, [m0001, m0003, m0005], clock.now()),
+  );
+  logger.info(`[bootstrap] Shared migrations: ${applied.length > 0 ? `applied ${applied.join(", ")}` : "up to date"}`);
+  await bootstrapStep(
+    logger,
+    "Applying platform configuration",
+    () => applyPlatformConfig(shared, PLATFORM_CONFIG, clock.now()),
+  );
+  await bootstrapStep(logger, "Checking shared master data", () => seedMasterDataIfEmpty(shared));
 
   const platform = new Platform(shared, new StubIdentityProvider(), clock, new MemoryBlobStore());
   const dbs: Record<string, DbAdapter> = {};
   for (const cfg of ALL_REGISTRIES) {
-    const db = await createAdapter(config.registryTarget(cfg.database));
-    await applyRegistryConfig(shared, db, cfg, clock.now());
+    const target = config.registryTarget(cfg.database);
+    const db = await bootstrapStep(
+      logger,
+      `Connecting registry "${cfg.registryId}" database ${describeTarget(target)}`,
+      () => createAdapter(target),
+    );
+    const result = await bootstrapStep(
+      logger,
+      `Running migrations and applying configuration for registry "${cfg.registryId}"`,
+      () => applyRegistryConfig(shared, db, cfg, clock.now()),
+    );
+    logger.info(
+      `[bootstrap] Registry "${cfg.registryId}": config version ${result.version}; ` +
+      `${result.addedColumns.length} field column(s) added`,
+    );
     platform.registerRegistry(cfg, db);
     dbs[cfg.registryId] = db;
   }
+
+  logger.info(`[bootstrap] Platform ready with ${ALL_REGISTRIES.length} registries`);
 
   return { platform, shared, db: dbs.permit!, dbs };
 }
