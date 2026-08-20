@@ -39,7 +39,7 @@ export async function allocateDiaryNumber(
       table: "diary_counters",
       insertColumns: ["registry_id", "year", "last_number"],
       conflictColumns: ["registry_id", "year"],
-      updateSet: "last_number = last_number + 1",
+      updateColumn: "last_number",
       returning: "last_number",
     }),
     [registryId, year, 1],

@@ -41,8 +41,8 @@ export interface UpsertReturningSpec {
   readonly table: string;
   readonly insertColumns: readonly string[];
   readonly conflictColumns: readonly string[];
-  /** Raw SET expression referencing the target column, e.g. "last_number = last_number + 1". */
-  readonly updateSet: string;
+  /** Existing numeric column to increment atomically when the row exists. */
+  readonly updateColumn: string;
   readonly returning: string;
 }
 
@@ -113,7 +113,8 @@ export const SqliteDialect: Dialect = {
     const vals = spec.insertColumns.map(() => "?").join(", ");
     const keys = spec.conflictColumns.join(", ");
     return `INSERT INTO ${spec.table} (${cols}) VALUES (${vals}) ` +
-      `ON CONFLICT (${keys}) DO UPDATE SET ${spec.updateSet} RETURNING ${spec.returning}`;
+      `ON CONFLICT (${keys}) DO UPDATE SET ${spec.updateColumn} = ${spec.updateColumn} + 1 ` +
+      `RETURNING ${spec.returning}`;
   },
 
   insertIfAbsent(table, columns) {
@@ -173,7 +174,7 @@ export const SqlServerDialect: Dialect = {
     return (
       `MERGE ${spec.table} WITH (HOLDLOCK) AS target ` +
       `USING (VALUES (${srcVals})) AS src (${srcCols}) ON ${on} ` +
-      `WHEN MATCHED THEN UPDATE SET ${spec.updateSet} ` +
+      `WHEN MATCHED THEN UPDATE SET ${spec.updateColumn} = target.${spec.updateColumn} + 1 ` +
       `WHEN NOT MATCHED THEN INSERT (${srcCols}) VALUES (${insVals}) ` +
       `OUTPUT INSERTED.${spec.returning};`
     );

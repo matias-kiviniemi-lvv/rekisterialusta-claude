@@ -59,10 +59,11 @@ test("upsertReturning (diary counter): RETURNING vs OUTPUT", () => {
     table: "diary_counters",
     insertColumns: ["registry_id", "year", "last_number"],
     conflictColumns: ["registry_id", "year"],
-    updateSet: "last_number = last_number + 1",
+    updateColumn: "last_number",
     returning: "last_number",
   } as const;
   assert.match(SqliteDialect.upsertReturning(spec), /RETURNING last_number$/);
+  assert.match(SqlServerDialect.upsertReturning(spec), /UPDATE SET last_number = target\.last_number \+ 1/);
   assert.match(SqlServerDialect.upsertReturning(spec), /OUTPUT INSERTED\.last_number;$/);
 });
 

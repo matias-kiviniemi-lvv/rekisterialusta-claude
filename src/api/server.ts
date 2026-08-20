@@ -27,6 +27,16 @@ export interface RawRequest {
   readonly body: unknown;
 }
 
+export interface HttpLogger {
+  info(message: string): void;
+  error(message: string): void;
+}
+
+const defaultHttpLogger: HttpLogger = {
+  info: (message) => process.stdout.write(`${message}\n`),
+  error: (message) => process.stderr.write(`${message}\n`),
+};
+
 /** Pure dispatch: raw request → response. No sockets. */
 export async function dispatch(platform: Platform, raw: RawRequest): Promise<ApiResponse> {
   const url = new URL(raw.url, "http://internal");
@@ -73,7 +83,7 @@ function serveStatic(urlPath: string, res: ServerResponse): boolean {
   return true;
 }
 
-export function createServer(platform: Platform): Server {
+export function createServer(platform: Platform, logger: HttpLogger = defaultHttpLogger): Server {
   return httpCreateServer((httpReq: IncomingMessage, httpRes: ServerResponse) => {
     const method = httpReq.method ?? "GET";
     const path = (httpReq.url ?? "/").split("?")[0] ?? "/";
@@ -104,9 +114,21 @@ export function createServer(platform: Platform): Server {
         authorization: httpReq.headers["authorization"],
         body,
       });
+      logApiResult(logger, method, httpReq.url ?? "/", result);
       writeJson(httpRes, result);
     });
   });
+}
+
+function logApiResult(logger: HttpLogger, method: string, url: string, result: ApiResponse): void {
+  const path = url.split("?")[0] ?? "/";
+  const body = result.body && typeof result.body === "object"
+    ? result.body as Record<string, unknown>
+    : undefined;
+  const detail = typeof body?.error === "string" ? ` — ${body.error}` : "";
+  const message = `[http] ${method} ${path} -> ${result.status}${detail}`;
+  if (result.status >= 400) logger.error(message);
+  else logger.info(message);
 }
 
 function writeJson(res: ServerResponse, result: ApiResponse): void {

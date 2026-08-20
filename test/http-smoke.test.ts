@@ -10,7 +10,11 @@ const NOW = "2026-08-11T09:00:00.000Z";
 // not just the pure dispatch function the other suites use.
 test("HTTP server serves the API over a real socket", async () => {
   const { platform } = await buildSamplePlatform(fixedClock(NOW));
-  const server = createServer(platform);
+  const messages: string[] = [];
+  const server = createServer(platform, {
+    info: (message) => messages.push(message),
+    error: (message) => messages.push(message),
+  });
   await new Promise<void>((resolve) => server.listen(0, resolve));
   const { port } = server.address() as AddressInfo;
   const base = `http://127.0.0.1:${port}`;
@@ -38,6 +42,8 @@ test("HTTP server serves the API over a real socket", async () => {
     // Public read of the unpublished case is forbidden.
     const pub = await fetch(`${base}/api/registries/permit/cases/${encodeURIComponent(diaryNumber)}`);
     assert.equal(pub.status, 403);
+    assert.ok(messages.some((message) => message.includes("POST /api/registries/permit/cases -> 201")));
+    assert.ok(messages.some((message) => message.includes("-> 403 — forbidden")));
   } finally {
     server.closeAllConnections(); // drop fetch keep-alive sockets so close() resolves promptly
     await new Promise<void>((resolve) => server.close(() => resolve()));
