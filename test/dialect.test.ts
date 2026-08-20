@@ -85,6 +85,15 @@ test("introspection: PRAGMA/sqlite_master vs INFORMATION_SCHEMA", () => {
   assert.match(SqlServerDialect.tableExists(), /INFORMATION_SCHEMA\.TABLES/);
 });
 
+test("limitOne uses LIMIT on SQLite and TOP on SQL Server", () => {
+  const query = "SELECT config_json FROM config_versions ORDER BY version DESC";
+  assert.equal(SqliteDialect.limitOne(query), `${query} LIMIT 1`);
+  assert.equal(
+    SqlServerDialect.limitOne(query),
+    "SELECT TOP (1) config_json FROM config_versions ORDER BY version DESC",
+  );
+});
+
 test("convertPlaceholders numbers ?s and skips string literals", () => {
   const { text, names } = convertPlaceholders("INSERT INTO t (a, b) VALUES (?, ?)");
   assert.equal(text, "INSERT INTO t (a, b) VALUES (@p0, @p1)");

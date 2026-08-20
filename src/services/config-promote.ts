@@ -14,6 +14,7 @@
 import type { DbAdapter } from "../db/db.ts";
 import type { RegistryConfig } from "../config/registry-config.ts";
 import { applyRegistryConfig } from "./config-apply.ts";
+import { dialectFor } from "../db/dialect.ts";
 
 export interface ConfigVersionInfo {
   readonly registryId: string;
@@ -24,8 +25,9 @@ export interface ConfigVersionInfo {
 
 /** Read the latest applied config artifact for a registry from a shared DB. */
 export async function exportRegistryConfig(shared: DbAdapter, registryId: string): Promise<RegistryConfig | undefined> {
+  const d = dialectFor(shared.dialect);
   const row = await shared.get(
-    "SELECT config_json FROM config_versions WHERE registry_id = ? ORDER BY version DESC LIMIT 1",
+    d.limitOne("SELECT config_json FROM config_versions WHERE registry_id = ? ORDER BY version DESC"),
     [registryId],
   );
   return row ? (JSON.parse(String(row.config_json)) as RegistryConfig) : undefined;

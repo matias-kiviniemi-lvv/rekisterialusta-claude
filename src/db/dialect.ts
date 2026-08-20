@@ -75,6 +75,9 @@ export interface Dialect {
 
   /** Query returning a single row `{ ok: 1 }` iff a table (param) exists. */
   tableExists(): string;
+
+  /** Restrict a SELECT to its first row. */
+  limitOne(query: string): string;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +129,8 @@ export const SqliteDialect: Dialect = {
   columnsOf: (table) => `PRAGMA table_info(${table})`,
 
   tableExists: () => `SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = ?`,
+
+  limitOne: (query) => `${query} LIMIT 1`,
 };
 
 // ---------------------------------------------------------------------------
@@ -195,6 +200,8 @@ export const SqlServerDialect: Dialect = {
 
   tableExists: () =>
     `SELECT 1 AS ok FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME = ?`,
+
+  limitOne: (query) => query.replace(/^(\s*SELECT)\b/i, "$1 TOP (1)"),
 };
 
 export function dialectFor(name: DialectName): Dialect {

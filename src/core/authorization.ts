@@ -11,7 +11,8 @@
  * category path, not graph walks.
  */
 
-import type { Db } from "../db/db.ts";
+import type { Db, DbAdapter } from "../db/db.ts";
+import { dialectFor } from "../db/dialect.ts";
 import { normalizePath } from "../domain/categories.ts";
 
 export interface WorkerAccess {
@@ -19,9 +20,15 @@ export interface WorkerAccess {
 }
 
 /** Does the customer own (is a party to) this case? */
-export async function customerOwnsCase(shared: Db, registryDb: Db, caseKey: bigint, customerId: string): Promise<boolean> {
+export async function customerOwnsCase(
+  shared: DbAdapter,
+  registryDb: DbAdapter,
+  caseKey: bigint,
+  customerId: string,
+): Promise<boolean> {
+  const d = dialectFor(registryDb.dialect);
   const row = await registryDb.get(
-    "SELECT 1 AS ok FROM case_parties WHERE case_key = ? AND customer_id = ? LIMIT 1",
+    d.limitOne("SELECT 1 AS ok FROM case_parties WHERE case_key = ? AND customer_id = ?"),
     [caseKey, customerId],
   );
   return !!row;
