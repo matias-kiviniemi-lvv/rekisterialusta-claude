@@ -113,7 +113,12 @@ export async function bootstrapFromEnv(
   const applied = await bootstrapStep(
     logger,
     "Running shared database migrations",
-    () => migrate(shared, [m0001, m0003, m0005], clock.now()),
+    () => migrate(
+      shared,
+      [m0001, m0003, m0005],
+      clock.now(),
+      (message) => logger.info(`[bootstrap] Shared migration: ${message}`),
+    ),
   );
   logger.info(`[bootstrap] Shared migrations: ${applied.length > 0 ? `applied ${applied.join(", ")}` : "up to date"}`);
   await bootstrapStep(
@@ -135,7 +140,13 @@ export async function bootstrapFromEnv(
     const result = await bootstrapStep(
       logger,
       `Running migrations and applying configuration for registry "${cfg.registryId}"`,
-      () => applyRegistryConfig(shared, db, cfg, clock.now()),
+      () => applyRegistryConfig(
+        shared,
+        db,
+        cfg,
+        clock.now(),
+        (message) => logger.info(`[bootstrap] Registry "${cfg.registryId}" migration: ${message}`),
+      ),
     );
     logger.info(
       `[bootstrap] Registry "${cfg.registryId}": config version ${result.version}; ` +

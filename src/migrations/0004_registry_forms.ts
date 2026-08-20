@@ -17,7 +17,7 @@ export const m0004: Migration = {
     await tx.run(`
       CREATE TABLE pending_case_updates (
         ${d.identityPk("pending_id")},
-        case_key     INTEGER NOT NULL REFERENCES cases(case_key),
+        case_key     ${d.columnType("integer")} NOT NULL REFERENCES cases(case_key),
         form_id      TEXT NOT NULL,
         payload      TEXT NOT NULL,
         submitted_by TEXT NOT NULL,
@@ -32,8 +32,8 @@ export const m0004: Migration = {
     await tx.run(`
       CREATE TABLE attachments (
         ${d.identityPk("attachment_id")},
-        case_key      INTEGER NOT NULL REFERENCES cases(case_key),
-        operation_key INTEGER NULL REFERENCES operations(operation_key),
+        case_key      ${d.columnType("integer")} NOT NULL REFERENCES cases(case_key),
+        operation_key ${d.columnType("integer")} NULL REFERENCES operations(operation_key),
         filename      TEXT NOT NULL,
         content_type  TEXT NOT NULL,
         size          INTEGER NOT NULL,

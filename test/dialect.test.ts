@@ -107,7 +107,7 @@ test("translateDdl maps identity + TEXT widths for T-SQL", () => {
   )`;
   const t = translateDdl(ddl);
   assert.match(t, /case_key BIGINT IDENTITY\(1,1\) PRIMARY KEY/);
-  assert.match(t, /diary_number NVARCHAR\(400\) NOT NULL UNIQUE/); // identifier-ish → bounded
+  assert.match(t, /diary_number NVARCHAR\(200\) NOT NULL UNIQUE/); // identifier-ish → bounded
   assert.match(t, /properties NVARCHAR\(MAX\)/); // large/JSON column → MAX
   // Non-DDL statements pass through untouched.
   assert.equal(translateDdl("SELECT * FROM cases WHERE x = ?"), "SELECT * FROM cases WHERE x = ?");
@@ -116,14 +116,14 @@ test("translateDdl maps identity + TEXT widths for T-SQL", () => {
 test("translateDdl maps inline and ALTER TABLE TEXT columns", () => {
   assert.equal(
     translateDdl("CREATE TABLE schema_migrations (id TEXT PRIMARY KEY, name TEXT NOT NULL, payload TEXT NULL)"),
-    "CREATE TABLE schema_migrations (id NVARCHAR(400) PRIMARY KEY, name NVARCHAR(400) NOT NULL, payload NVARCHAR(MAX) NULL)",
+    "CREATE TABLE schema_migrations (id NVARCHAR(200) PRIMARY KEY, name NVARCHAR(200) NOT NULL, payload NVARCHAR(MAX) NULL)",
   );
   assert.equal(
     translateDdl("ALTER TABLE cases ADD external_id TEXT NULL"),
-    "ALTER TABLE cases ADD external_id NVARCHAR(400) NULL",
+    "ALTER TABLE cases ADD external_id NVARCHAR(200) NULL",
   );
   assert.equal(
     translateDdl("CREATE TABLE rules ([trigger] TEXT NOT NULL DEFAULT 'state_change')"),
-    "CREATE TABLE rules ([trigger] NVARCHAR(400) NOT NULL DEFAULT 'state_change')",
+    "CREATE TABLE rules ([trigger] NVARCHAR(200) NOT NULL DEFAULT 'state_change')",
   );
 });

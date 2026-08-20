@@ -17,7 +17,7 @@
  * SQL Server adapter converts `?`→`@pN`. So call sites stay placeholder-agnostic.
  *
  * NOTE ON DDL TYPE WIDTHS: `translateDdl` maps SQLite `TEXT` to `NVARCHAR`. The
- * width heuristic (identifiers → NVARCHAR(400); known large/JSON columns →
+ * width heuristic (identifiers → NVARCHAR(200); known large/JSON columns →
  * NVARCHAR(MAX)) is a sensible first cut but is the one thing that MUST be
  * validated against a live SQL Server (index key-length limits, exact widths).
  * See ENVIRONMENTS.md.
@@ -243,8 +243,10 @@ export function stripSqlitePragmas(sql: string): string {
 
 /**
  * Columns whose SQLite `TEXT` holds large/JSON content → NVARCHAR(MAX); all
- * other TEXT → NVARCHAR(400) so keys and indexes stay within limits. This list
- * is the provisional heuristic that live SQL Server validation should confirm.
+ * other TEXT → NVARCHAR(200) so composite keys and indexes stay within the
+ * 900-byte clustered-index limit (two identifiers plus a BIGINT use 808 bytes).
+ * This list is the provisional heuristic that live SQL Server validation
+ * should confirm.
  */
 const LARGE_TEXT_COLUMNS = new Set([
   "properties", "comment", "payload", "config_json", "property_schema",
@@ -266,7 +268,7 @@ export function translateDdl(sql: string): string {
   // Column definitions may be multiline, inline after `(` or `,`, or supplied
   // to ALTER TABLE ... ADD. Preserve that prefix while replacing the type.
   out = out.replace(/(^\s*|[,(]\s*|\bADD\s+)(\[?)([A-Za-z_][A-Za-z0-9_]*)(\]?)\s+TEXT\b/gim, (_m, prefix: string, open: string, col: string, close: string) => {
-    const width = LARGE_TEXT_COLUMNS.has(col.toLowerCase()) ? "MAX" : "400";
+    const width = LARGE_TEXT_COLUMNS.has(col.toLowerCase()) ? "MAX" : "200";
     return `${prefix}${open}${col}${close} NVARCHAR(${width})`;
   });
   return out;

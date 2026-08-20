@@ -23,6 +23,8 @@ export interface Migration {
   up(tx: Db, d: Dialect): Promise<void>;
 }
 
+export type MigrationProgress = (message: string) => void;
+
 async function ensureMigrationsTable(db: DbAdapter, d: Dialect): Promise<void> {
   // Keep the migration key bounded on SQL Server: legacy TEXT/NVARCHAR(MAX)
   // columns cannot back a primary key or index. Migration ids are short,
@@ -49,10 +51,16 @@ async function appliedIds(db: DbAdapter): Promise<Set<string>> {
  * `now` is injected so runs are deterministic and testable.
  * Returns the ids that were applied this run.
  */
-export async function migrate(db: DbAdapter, migrations: readonly Migration[], now: string): Promise<string[]> {
+export async function migrate(
+  db: DbAdapter,
+  migrations: readonly Migration[],
+  now: string,
+  progress?: MigrationProgress,
+): Promise<string[]> {
   const d = dialectFor(db.dialect);
   await ensureMigrationsTable(db, d);
   const done = await appliedIds(db);
+  progress?.(`migration table ready; ${done.size} migration(s) already applied`);
   const ordered = [...migrations].sort((a, b) => a.id.localeCompare(b.id));
 
   // Guard against duplicate ids — a common config-as-code mistake.
@@ -64,16 +72,27 @@ export async function migrate(db: DbAdapter, migrations: readonly Migration[], n
 
   const applied: string[] = [];
   for (const m of ordered) {
-    if (done.has(m.id)) continue;
-    await db.transaction(async (tx) => {
-      await m.up(tx, d);
-      await tx.run("INSERT INTO schema_migrations (id, name, applied_at) VALUES (?, ?, ?)", [
-        m.id,
-        m.name,
-        now,
-      ]);
-    });
+    if (done.has(m.id)) {
+      progress?.(`${m.id} ${m.name}: already applied`);
+      continue;
+    }
+    progress?.(`${m.id} ${m.name}: applying`);
+    try {
+      await db.transaction(async (tx) => {
+        await m.up(tx, d);
+        await tx.run("INSERT INTO schema_migrations (id, name, applied_at) VALUES (?, ?, ?)", [
+          m.id,
+          m.name,
+          now,
+        ]);
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      progress?.(`${m.id} ${m.name}: FAILED — ${message}`);
+      throw error;
+    }
     applied.push(m.id);
+    progress?.(`${m.id} ${m.name}: applied`);
   }
   return applied;
 }

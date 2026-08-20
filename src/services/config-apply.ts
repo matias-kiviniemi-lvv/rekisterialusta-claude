@@ -20,6 +20,7 @@
 import type { DbAdapter } from "../db/db.ts";
 import { dialectFor } from "../db/dialect.ts";
 import { migrate } from "../migrations/runner.ts";
+import type { MigrationProgress } from "../migrations/runner.ts";
 import { registrySpineMigration } from "../migrations/0002_registry_spine.ts";
 import { m0004 } from "../migrations/0004_registry_forms.ts";
 import type { RegistryConfig, PlatformConfig } from "../config/registry-config.ts";
@@ -51,6 +52,7 @@ export async function applyRegistryConfig(
   regDb: DbAdapter,
   config: RegistryConfig,
   now: string,
+  migrationProgress?: MigrationProgress,
 ): Promise<{ version: number; addedColumns: string[] }> {
   const ds = dialectFor(shared.dialect);
   const dr = dialectFor(regDb.dialect);
@@ -59,7 +61,9 @@ export async function applyRegistryConfig(
   //    Using the runner keeps it forward-only and recorded per-registry DB.
   const casesExists = await tableExists(regDb, "cases");
   if (!casesExists) {
-    await migrate(regDb, [registrySpineMigration(config), m0004], now);
+    await migrate(regDb, [registrySpineMigration(config), m0004], now, migrationProgress);
+  } else {
+    migrationProgress?.("base schema already present; migrations skipped");
   }
 
   // 2) Forward-only field evolution: add any config field missing as a column.

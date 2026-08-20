@@ -112,7 +112,7 @@ Env vars (all read in `src/config/db-config.ts`): `DB_DIALECT`, `DB_DIR`,
 Server adapter is compile-verified and its emitted T-SQL is unit-verified, but it
 has not yet run against a real SQL Server (this workspace can't host one). The
 one place that specifically needs a live check is the **DDL type widths** in
-`translateDdl` (`src/db/dialect.ts`): SQLite `TEXT` is mapped to `NVARCHAR(400)`
+`translateDdl` (`src/db/dialect.ts`): SQLite `TEXT` is mapped to `NVARCHAR(200)`
 for identifier-ish columns and `NVARCHAR(MAX)` for known large/JSON columns. That
 heuristic keeps keys/indexes within SQL Server's key-length limits, but the exact
 widths per column should be confirmed against a running database (local `mssql`

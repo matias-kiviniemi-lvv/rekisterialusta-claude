@@ -71,7 +71,7 @@ export function registrySpineMigration(reg: RegistryDefinition): Migration {
       await tx.run(`
         CREATE TABLE operations (
           ${d.identityPk("operation_key")},
-          case_key      INTEGER NOT NULL REFERENCES cases(case_key),
+          case_key      ${d.columnType("integer")} NOT NULL REFERENCES cases(case_key),
           operation_id  INTEGER NOT NULL,
           created       TEXT NOT NULL,
           modified      TEXT NOT NULL,
@@ -89,7 +89,7 @@ export function registrySpineMigration(reg: RegistryDefinition): Migration {
 
       await tx.run(`
         CREATE TABLE case_handlers (
-          case_key  INTEGER NOT NULL REFERENCES cases(case_key),
+          case_key  ${d.columnType("integer")} NOT NULL REFERENCES cases(case_key),
           worker_id TEXT NOT NULL,
           role      TEXT NOT NULL,
           PRIMARY KEY (case_key, worker_id, role)
@@ -98,7 +98,7 @@ export function registrySpineMigration(reg: RegistryDefinition): Migration {
 
       await tx.run(`
         CREATE TABLE case_parties (
-          case_key    INTEGER NOT NULL REFERENCES cases(case_key),
+          case_key    ${d.columnType("integer")} NOT NULL REFERENCES cases(case_key),
           customer_id TEXT NOT NULL,
           party_role  TEXT NOT NULL,
           PRIMARY KEY (case_key, customer_id, party_role)

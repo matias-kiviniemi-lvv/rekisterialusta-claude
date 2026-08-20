@@ -21,7 +21,9 @@ test("bootstrap logs database targets and migration progress", async () => {
 
     assert.ok(messages.some((message) => message.includes("Connecting shared database :memory:")));
     assert.ok(messages.some((message) => message.includes("Running shared database migrations")));
+    assert.ok(messages.some((message) => message.includes("Shared migration: 0001 shared_schema: applying")));
     assert.ok(messages.some((message) => message.includes('Connecting registry "permit" database :memory:')));
+    assert.ok(messages.some((message) => message.includes('Registry "permit" migration: 0002 registry_spine:permit: applying')));
     assert.ok(messages.some((message) => message.includes('Connecting registry "grant" database :memory:')));
     assert.ok(messages.some((message) => message.includes("Platform ready with 2 registries")));
   } finally {

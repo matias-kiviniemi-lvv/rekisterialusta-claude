@@ -212,11 +212,21 @@ export class SqlServerAdapter extends SqlServerConn implements DbAdapter {
       return result;
     } catch (err) {
       this.#depth--;
-      if (this.#depth === 0) {
-        await this.#tx!.rollback();
-        this.#tx = undefined;
-      } else {
-        await new this.mssql.Request(this.#tx!).query(`ROLLBACK TRANSACTION sp_${this.#depth}`);
+      try {
+        if (this.#depth === 0) {
+          await this.#tx!.rollback();
+        } else {
+          await new this.mssql.Request(this.#tx!).query(`ROLLBACK TRANSACTION sp_${this.#depth}`);
+        }
+      } catch (rollbackError) {
+        // A failed DDL statement can make SQL Server abort the transaction
+        // before the adapter rolls it back. Keep the original query error—the
+        // secondary EABORT otherwise hides the actionable database message.
+        if (err instanceof Error) {
+          Object.defineProperty(err, "rollbackError", { value: rollbackError, enumerable: false });
+        }
+      } finally {
+        if (this.#depth === 0) this.#tx = undefined;
       }
       throw err;
     }
