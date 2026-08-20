@@ -112,3 +112,14 @@ test("translateDdl maps identity + TEXT widths for T-SQL", () => {
   // Non-DDL statements pass through untouched.
   assert.equal(translateDdl("SELECT * FROM cases WHERE x = ?"), "SELECT * FROM cases WHERE x = ?");
 });
+
+test("translateDdl maps inline and ALTER TABLE TEXT columns", () => {
+  assert.equal(
+    translateDdl("CREATE TABLE schema_migrations (id TEXT PRIMARY KEY, name TEXT NOT NULL, payload TEXT NULL)"),
+    "CREATE TABLE schema_migrations (id NVARCHAR(400) PRIMARY KEY, name NVARCHAR(400) NOT NULL, payload NVARCHAR(MAX) NULL)",
+  );
+  assert.equal(
+    translateDdl("ALTER TABLE cases ADD external_id TEXT NULL"),
+    "ALTER TABLE cases ADD external_id NVARCHAR(400) NULL",
+  );
+});

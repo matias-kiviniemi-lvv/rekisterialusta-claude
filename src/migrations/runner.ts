@@ -24,10 +24,17 @@ export interface Migration {
 }
 
 async function ensureMigrationsTable(db: DbAdapter, d: Dialect): Promise<void> {
+  // Keep the migration key bounded on SQL Server: legacy TEXT/NVARCHAR(MAX)
+  // columns cannot back a primary key or index. Migration ids are short,
+  // zero-padded identifiers and timestamps are ISO-8601 strings, so these
+  // bounds leave ample room while producing indexable T-SQL directly.
+  const columns = d.name === "sqlserver"
+    ? "id NVARCHAR(100) PRIMARY KEY, name NVARCHAR(400) NOT NULL, applied_at NVARCHAR(50) NOT NULL"
+    : "id TEXT PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL";
   await db.run(
     d.createTableIfNotExists(
       "schema_migrations",
-      `id TEXT PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL`,
+      columns,
     ),
   );
 }

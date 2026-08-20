@@ -263,9 +263,11 @@ export function translateDdl(sql: string): string {
   // Identity PK: SQLite's "INTEGER PRIMARY KEY AUTOINCREMENT" → IDENTITY.
   out = out.replace(/\bINTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b/gi, "BIGINT IDENTITY(1,1) PRIMARY KEY");
   // Per-column TEXT → NVARCHAR(width) using the large-column heuristic.
-  out = out.replace(/^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s+TEXT\b/gim, (_m, indent: string, col: string) => {
+  // Column definitions may be multiline, inline after `(` or `,`, or supplied
+  // to ALTER TABLE ... ADD. Preserve that prefix while replacing the type.
+  out = out.replace(/(^\s*|[,(]\s*|\bADD\s+)([A-Za-z_][A-Za-z0-9_]*)\s+TEXT\b/gim, (_m, prefix: string, col: string) => {
     const width = LARGE_TEXT_COLUMNS.has(col.toLowerCase()) ? "MAX" : "400";
-    return `${indent}${col} NVARCHAR(${width})`;
+    return `${prefix}${col} NVARCHAR(${width})`;
   });
   return out;
 }
